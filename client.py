@@ -18,7 +18,7 @@ def receive():
             json_string = message.decode()
             command_json = json.loads(json_string)
             if command_json["command"] == "join":
-                print("okjasdhfoaskdhjf")
+                print("Sucessful Connection")
 
         except:
             pass
