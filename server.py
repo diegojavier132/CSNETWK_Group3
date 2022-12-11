@@ -2,9 +2,6 @@ import json
 import socket
 import threading
 
-# The server IP address and port number
-SERVER_IP = "localhost"
-SERVER_PORT = 8000
 
 # The maximum size of a message, in bytes
 MAX_MESSAGE_SIZE = 1024
@@ -38,22 +35,34 @@ while True:
     elif message["command"] == "leave":
         # A client is leaving the chatroom
         # Remove the client from the dictionary
-        del clients[message["handle"]]
+        try:
+            del clients[message["handle"]]
+        except:
+            pass
     elif message["command"] == "register":
         # A client is registering a handle
         # Store the client's handle, IP address, and port number
-        clients[message["handle"]] = (addr[0], addr[1])
+        if message["handle"] in clients:
+            message_to_send = {
+            "command": "error",
+            "message": "Error: Registration failed. Handle or alias already exists.",
+            }
+            message_to_send_str = json.dumps(message_to_send)
+            sock.sendto(message_to_send_str.encode(), addr)
 
-        message_to_send = {
-            "command": "register",
-            "handle": message["handle"],
-            "message": f'Welcome {message["handle"]}!',
-        }
+        else:
+            clients[message["handle"]] = (addr[0], addr[1])
 
-        message_to_send_str = json.dumps(message_to_send)
-        for client in clients.values():
-            sock.sendto(message_to_send_str.encode(), client)
-        print(f'{message["handle"]} has registered')
+            message_to_send = {
+                "command": "register",
+                "handle": message["handle"],
+                "message": f'Welcome {message["handle"]}!',
+            }
+
+            message_to_send_str = json.dumps(message_to_send)
+            for client in clients.values():
+                sock.sendto(message_to_send_str.encode(), client)
+            print(f'{message["handle"]} has registered')
     elif message["command"] == "all":
         # A client is sending a message to all clients
         # Increment the message ID
@@ -105,4 +114,19 @@ while True:
             # Send the message to the specific handle
             sock.sendto(message_to_send_str.encode(), clients[message["handle"]])
             sock.sendto(message_to_client_str.encode(), clients[message["from"]])
+        else:
+            message_to_send = {
+            "command": "error",
+            "message": "Error: Handle or alias not found.",
+            }
 
+            message_to_send_str = json.dumps(message_to_send)
+            sock.sendto(message_to_send_str.encode(), addr)
+    else:
+        message_to_send = {
+        "command": "error",
+        "message": "Error: Command not found.",
+        }
+
+        message_to_send_str = json.dumps(message_to_send)
+        sock.sendto(message_to_send_str.encode(), addr)
