@@ -25,10 +25,24 @@ def receive_messages():
             # Decode the JSON formatted string
             message = json.loads(string)
 
-            # Check the type of the message
-            if message["type"] == "message":
+            # Check the command of the message
+            if message["command"] == "all":
                 # Print the message to the screen
                 print(f"{message['handle']}: {message['message']}")
+
+            elif message["command"] == "register":
+                print(f"{message['message']}")
+
+
+            elif message["command"] == "msg":
+                print(f"[From {message['handle']}]: {message['message']}")
+
+            elif message["command"] == "msgr":
+                print(f"[To {message['handle']}]: {message['message']}")
+
+            elif message["command"] == "join":
+                print("heyyyyyyy")
+                print(f"{message['message']}")
         except:
             pass
 
@@ -48,17 +62,30 @@ while True:
         # Set the server IP address and port number
         SERVER_IP = words[1]
         SERVER_PORT = words[2]
-        sock.bind((SERVER_IP, int(SERVER_PORT)))
-        receive_thread = threading.Thread(target=receive_messages)
-        receive_thread.start()
+        try:
+            result = sock.bind((SERVER_IP, int(SERVER_PORT)))
+        except:
+            result = "Error occured"
+
+        
+        if result is None:
+            print("Connection to the Message Board, Server is successful!")
+            receive_thread = threading.Thread(target=receive_messages)
+            receive_thread.start()
+        
+        else:
+            print ("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
+        
+
         
     elif words[0] == "/leave":
         # The user is trying to leave the chatroom
         # Create the message to be sent to the server
         message = {
-            "type": "leave",
+            "command": "leave",
             "handle": handle,
         }
+
 
         # Encode the message as a JSON formatted string
         message_str = json.dumps(message)
@@ -66,8 +93,6 @@ while True:
         # Send the message to the server
         sock.sendto(message_str.encode(), (SERVER_IP, 9999))
 
-        # Break out of the loop
-        break
     elif words[0] == "/register":
         # The user is trying to register a handle
         # Set the handle
@@ -75,8 +100,9 @@ while True:
 
         # Create the message to be sent to the server
         message = {
-            "type": "register",
+            "command": "register",
             "handle": handle,
+            "message": "Welcome"
         }
 
         # Encode the message as a JSON formatted string
@@ -91,7 +117,7 @@ while True:
 
         # Create the message to be sent to the server
         message_to_send = {
-            "type": "all",
+            "command": "all",
             "handle": handle,
             "message": message,
         }
@@ -108,9 +134,9 @@ while True:
 
             # Create the message to be sent to the server
         message_to_send = {
-              "type": "msg",
-              "handle": handle,
-              "to": words[1],
+              "command": "msg",
+              "from": handle,
+              "handle": words[1],
               "message": message,
             
         }
