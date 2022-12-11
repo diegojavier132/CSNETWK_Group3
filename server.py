@@ -1,85 +1,86 @@
+import json
 import socket
 import threading
-import queue
-import json
 
+# The server IP address and port number
+SERVER_IP = "localhost"
+SERVER_PORT = 8000
 
+# The maximum size of a message, in bytes
+MAX_MESSAGE_SIZE = 1024
 
-class json_command():          # leave this empty
-    def __init__(self):   # constructor function using self
-        self.command = None  # variable using self.
-        self.handle = None
-        self
+# Create the UDP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-json_string = '{"command":" ", "handle":" ", "message":"*^8tjqdkb", "ip":" ", "port":" "}'
-command_json = json.loads(json_string)
+# Bind the socket to the server IP and port
+sock.bind(("localhost", 9999))
 
+# A dictionary to store the registered handles and their corresponding IP addresses and port numbers
+clients = {}
 
-messages = queue.Queue()
-clients = []
-names = []
-commands = queue
+# A variable to keep track of the next message ID
+next_message_id = 0
 
+while True:
+    # Receive a message from a client
+    data, addr = sock.recvfrom(1024)
+    string_data = data.decode()
+    # Decode the JSON formatted string
+    message = json.loads(string_data)
 
-server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-server.bind(("localhost", 9999))
+    # Check the type of the message
+    if message["type"] == "join":
+        # A client is joining the chatroom
+        # Store the client's handle, IP address, and port number
+        clients[message["handle"]] = (addr[0], addr[1])
+        print("Joined")
+    elif message["type"] == "leave":
+        # A client is leaving the chatroom
+        # Remove the client from the dictionary
+        del clients[message["handle"]]
+    elif message["type"] == "register":
+        # A client is registering a handle
+        # Store the client's handle, IP address, and port number
+        clients[message["handle"]] = (addr[0], addr[1])
+        print(f'{message["handle"]} has registered')
+    elif message["type"] == "all":
+        # A client is sending a message to all clients
+        # Increment the message ID
+        next_message_id += 1
 
+        # Create the message to be sent to all clients
+        message_to_send = {
+            "type": "message",
+            "id": next_message_id,
+            "handle": message["handle"],
+            "message": message["message"],
+        }
 
+        # Encode the message as a JSON formatted string
+        message_to_send_str = json.dumps(message_to_send)
 
-def receive():
-    global command_json
+        # Send the message to all registered clients
+        for client in clients.values():
+            sock.sendto(message_to_send_str.encode(), client)
+    elif message["type"] == "msg":
+        # A client is sending a message to a specific handle
+        # Check if the handle exists in the dictionary
+        if message["to"] in clients:
+            # Increment the message ID
+            next_message_id += 1
 
-    while True:
-        try:
-            message, addr = server.recvfrom(1024)
-            messages.put((message, addr))
-            json_string = message.decode()
-            command_json = json.loads(json_string)
+            # Create the message to be sent to the specific handle
+            message_to_send = {
+                "type": "message",
+                "id": next_message_id,
+                "handle": message["handle"],
+                "message": message["message"],
+                
+            }
 
-        except:
-            pass
+            # Encode the message as a JSON formatted string
+            message_to_send_str = json.dumps(message_to_send)
 
+            # Send the message to the specific handle
+            sock.sendto(message_to_send_str.encode(), clients[message["to"]])
 
-def broadcast():
-    global command_json
-
-    while True:
-        while not messages.empty():
-            message, addr = messages.get()
-            if command_json["command"] == "all":
-                print(command_json["message"])
-        
-            if addr not in clients:
-                clients.append(addr)
-
-            for client in clients:
-                try:
-                    if command_json["command"] == "join":
-                        command_json["message"] = "Connection successful"
-                        result = json.dumps(command_json)
-                        server.sendto(result.encode(), client)
-
-                    elif command_json["command"] == "register":
-                        name = command_json["handle"]
-                        names.append(name)
-                    
-                    elif command_json["command"] == "all":
-                        server.sendto(f'{command_json["message"]}'.encode(), client)
-
-                    
-                    else:
-                        server.sendto(message, client)
-
-                except:
-                    print("smth")
-                    clients.remove(client)
-                    names.remove(name)
-
-
-t1 = threading.Thread(target=receive)
-t2 = threading.Thread(target=broadcast)
-
-
-
-t1.start()
-t2.start()
