@@ -5,13 +5,6 @@ import threading
 # The client handle
 handle = ""
 
-# The server IP address and port number
-SERVER_IP = "localhost"
-SERVER_PORT = 4353
-
-# The maximum size of a message, in bytes
-MAX_MESSAGE_SIZE = 1024
-
 # Create the UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -33,7 +26,6 @@ def receive_messages():
             elif message["command"] == "register":
                 print(f"{message['message']}")
 
-
             elif message["command"] == "msg":
                 print(f"[From {message['handle']}]: {message['message']}")
 
@@ -42,6 +34,9 @@ def receive_messages():
 
             elif message["command"] == "join":
                 print("heyyyyyyy")
+                print(f"{message['message']}")
+
+            elif message["command"] == "error":
                 print(f"{message['message']}")
         except:
             pass
@@ -81,17 +76,20 @@ while True:
     elif words[0] == "/leave":
         # The user is trying to leave the chatroom
         # Create the message to be sent to the server
-        message = {
-            "command": "leave",
-            "handle": handle,
-        }
+        try:
+            message = {
+                "command": "leave",
+                "handle": handle,
+            }
+            # Encode the message as a JSON formatted string
+            message_str = json.dumps(message)
 
-
-        # Encode the message as a JSON formatted string
-        message_str = json.dumps(message)
-
-        # Send the message to the server
-        sock.sendto(message_str.encode(), (SERVER_IP, 9999))
+            # Send the message to the server
+            sock.sendto(message_str.encode(), (SERVER_IP, 9999))
+            sock.close()
+            print("Connection closed. Thank you!")
+        except:
+            print("Error: Disconnection failed. Please connect to the server first.")
 
     elif words[0] == "/register":
         # The user is trying to register a handle
@@ -139,6 +137,17 @@ while True:
               "handle": words[1],
               "message": message,
             
+        }
+
+        # Encode the message as a JSON formatted string
+        message_to_send_str = json.dumps(message_to_send)
+
+        # Send the message to the server
+        sock.sendto(message_to_send_str.encode(), (SERVER_IP, 9999))
+    
+    else:
+        message_to_send = {
+              "command": "not_found",
         }
 
         # Encode the message as a JSON formatted string
