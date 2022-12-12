@@ -36,6 +36,13 @@ while True:
     elif message["command"] == "leave":
         # A client is leaving the chatroom
         # Remove the client from the dictionary
+        if message["handle"] is None:
+            message_to_send = {
+            "command": "error",
+            "message": "Error: Registration failed. Handle or alias already exists.",
+            }
+            message_to_send_str = json.dumps(message_to_send)
+            sock.sendto(message_to_send_str.encode(), addr)
         try:
             del clients[message["handle"]]
         except:
@@ -61,60 +68,78 @@ while True:
             }
 
             message_to_send_str = json.dumps(message_to_send)
+
             for client in clients.values():
                 sock.sendto(message_to_send_str.encode(), client)
             print(f'{message["handle"]} has registered')
     elif message["command"] == "all":
-        # A client is sending a message to all clients
-        # Increment the message ID
-        next_message_id += 1
-
-        # Create the message to be sent to all clients
-        message_to_send = {
-            "command": "all",
-            "id": next_message_id,
-            "handle": message["handle"],
-            "message": message["message"],
-        }
         
+        if message["message"] != "":
+            next_message_id += 1
 
-        # Encode the message as a JSON formatted string
-        message_to_send_str = json.dumps(message_to_send)
+            # Create the message to be sent to all clients
+            message_to_send = {
+                "command": "all",
+                "id": next_message_id,
+                "handle": message["handle"],
+                "message": message["message"],
+            }
+            
 
-        # Send the message to all registered clients
-        for client in clients.values():
-            sock.sendto(message_to_send_str.encode(), client)
+            # Encode the message as a JSON formatted string
+            message_to_send_str = json.dumps(message_to_send)
+
+            # Send the message to all registered clients
+            for client in clients.values():
+                sock.sendto(message_to_send_str.encode(), client)
+        else:
+            message_to_send = {
+            "command": "error",
+            "message": "Error: Invalid message",
+            }
+
+            message_to_send_str = json.dumps(message_to_send)
+            sock.sendto(message_to_send_str.encode(), addr)
+
     elif message["command"] == "msg":
         # A client is sending a message to a specific handle
         # Check if the handle exists in the dictionary
         if message["handle"] in clients:
             # Increment the message ID
             next_message_id += 1
+            if message["message"] != "":
+                # Create the message to be sent to the specific handle
+                message_to_send = {
+                    "command": "msg",
+                    "id": next_message_id,
+                    "handle": message["from"],
+                    "message": message["message"],
+                    
+                }
 
-            # Create the message to be sent to the specific handle
-            message_to_send = {
-                "command": "msg",
-                "id": next_message_id,
-                "handle": message["from"],
-                "message": message["message"],
+                message_to_client = {
+                    "command": "msgr",
+                    "id": next_message_id,
+                    "handle": message["handle"],
+                    "message": message["message"],
+                    
+                }
+
+                # Encode the message as a JSON formatted string
+                message_to_send_str = json.dumps(message_to_send)
+                message_to_client_str = json.dumps(message_to_client)
+
+                # Send the message to the specific handle
+                sock.sendto(message_to_send_str.encode(), clients[message["handle"]])
+                sock.sendto(message_to_client_str.encode(), clients[message["from"]])
+            else:
+                message_to_send = {
+                "command": "error",
+                "message": "Error: Invalid message",
+                }
                 
-            }
-
-            message_to_client = {
-                "command": "msgr",
-                "id": next_message_id,
-                "handle": message["handle"],
-                "message": message["message"],
-                
-            }
-
-            # Encode the message as a JSON formatted string
-            message_to_send_str = json.dumps(message_to_send)
-            message_to_client_str = json.dumps(message_to_client)
-
-            # Send the message to the specific handle
-            sock.sendto(message_to_send_str.encode(), clients[message["handle"]])
-            sock.sendto(message_to_client_str.encode(), clients[message["from"]])
+                message_to_send_str = json.dumps(message_to_send)
+                sock.sendto(message_to_send_str.encode(), addr)
         else:
             message_to_send = {
             "command": "error",
