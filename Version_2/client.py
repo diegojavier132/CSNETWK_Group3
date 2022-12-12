@@ -55,24 +55,37 @@ while True:
 
     # Check the first word of the input
     if words[0] == "/join":
+        check = None
         # The user is trying to join the chatroom
         # Set the server IP address and port number
-        SERVER_IP = words[1]
-        SERVER_PORT = words[2]
         try:
-            result = sock.bind((SERVER_IP, random.randint(7000,9000)))
-        except ConnectionError:
-            result = "Error occured"
+            SERVER_IP = words[1]
+            SERVER_PORT = words[2]
 
-
-        if result is None:
-            print("Connection to the Message Board, Server is successful!")
-            receive_thread = threading.Thread(target=receive_messages)
-            receive_thread.start()
-
-        else:
-            print ("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
+            try:
+                val = int(SERVER_PORT)
+            except:
+                print ("Error: Invalid port number")
+                check = 1
+        except:
+            check = 1
         
+        if check is None:
+            try:
+                result = sock.bind((SERVER_IP, random.randint(7000,9000)))
+            except:
+                result = "Error occured"
+
+
+            if result is None:
+                print("Connection to the Message Board, Server is successful!")
+                receive_thread = threading.Thread(target=receive_messages)
+                receive_thread.start()
+
+            else:
+                print ("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
+        else:
+            print ("Error: Either you have invalid/lack of arguments or you are already connected to a server")
 
         
     elif words[0] == "/leave":
