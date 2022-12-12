@@ -7,7 +7,7 @@ import random
 handle = ""
 
 # Create the UDP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 
 # A function to receive messages in a separate thread
 def receive_messages():
@@ -45,8 +45,9 @@ def receive_messages():
 # Start the thread to receive messages
 
 timeout_sec = 5
-
+registered = False
 while True:
+    
     # Read the user's input
     user_input = input()
 
@@ -54,121 +55,135 @@ while True:
     words = user_input.split()
 
     # Check the first word of the input
-    if words[0] == "/join":
-        check = None
-        # The user is trying to join the chatroom
-        # Set the server IP address and port number
-        try:
-            SERVER_IP = words[1]
-            SERVER_PORT = words[2]
-
-            try:
-                val = int(SERVER_PORT)
-            except:
-                print ("Error: Invalid port number")
-                check = 1
-        except:
-            check = 1
         
-        if check is None:
+    if words[0] == "/join":
+        if len(words) == 3:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            check = None
+            # The user is trying to join the chatroom
+            # Set the server IP address and port number
             try:
-                result = sock.bind((SERVER_IP, random.randint(7000,9000)))
+                SERVER_IP = words[1]
+                SERVER_PORT = words[2]
+
+                try:
+                    val = int(SERVER_PORT)
+                except:
+                    print ("Error: Invalid port number")
+                    check = 1
             except:
-                result = "Error occured"
+                check = 1
+            
+            if check is None:
+                try:
+                    result = sock.bind((SERVER_IP, random.randint(7000,9000)))
+                except:
+                    result = "Error occured"
 
 
-            if result is None:
-                print("Connection to the Message Board, Server is successful!")
-                receive_thread = threading.Thread(target=receive_messages)
-                receive_thread.start()
-
+                if result is None:
+                    print("Connection to the Message Board, Server is successful!")
+                    receive_thread = threading.Thread(target=receive_messages)
+                    receive_thread.start()
+                    
+                else:
+                    print ("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
             else:
-                print ("Error: Connection to the Message Board Server has failed! Please check IP Address and Port Number.")
-        else:
-            print ("Error: Either you have invalid/lack of arguments or you are already connected to a server")
+                print ("Error: Either you have invalid/lack of arguments or you are already connected to a server")
+        else: 
+            print ("Error: Either you have invalid/lack of arguments")
+
 
         
     elif words[0] == "/leave":
         # The user is trying to leave the chatroom
         # Create the message to be sent to the server
-        try:
-            message = {
-                "command": "leave",
-                "handle": handle,
-            }
-            # Encode the message as a JSON formatted string
-            message_str = json.dumps(message)
+        if len(words) == 1:
+            try:
+                message = {
+                    "command": "leave",
+                    "handle": handle,
+                }
+                # Encode the message as a JSON formatted string
+                message_str = json.dumps(message)
 
-            # Send the message to the server
-            sock.sendto(message_str.encode(), (SERVER_IP, int(SERVER_PORT)))
-            sock.close()
-            print("Connection closed. Thank you!")
-        except:
-            print("Error: Disconnection failed. Please connect to the server first.")
+                # Send the message to the server
+                sock.sendto(message_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+                sock.close()
+                registered = False
+                print("Connection closed. Thank you!")
+            except:
+                print("Error: Disconnection failed. Please connect to the server first.")
+        else:
+            print ("Error: Either you have invalid/lack of arguments")
 
     elif words[0] == "/register":
         # The user is trying to register a handle
         # Set the handle
-        try: 
-            handle = words[1]
-        except:
-            print("Error: No name entered")
+        if (len(words) == 2 and not registered) :
+            try: 
+                handle = words[1]
+                check = 1
+            except:
+                check = 0
+            # Create the message to be sent to the server
+            if check == 1:
+                message = {
+                    "command": "register",
+                    "handle": handle,
+                    "message": "Welcome"
+                }
 
-        # Create the message to be sent to the server
-        message = {
-            "command": "register",
-            "handle": handle,
-            "message": "Welcome"
-        }
-
-        try:
-            message_str = json.dumps(message)
-            sock.sendto(message_str.encode(), (SERVER_IP, int(SERVER_PORT)))
-        except:
-            print("Error: Registration failed. Please connect to the server first.")
+                try:
+                    message_str = json.dumps(message)
+                    sock.sendto(message_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+                    registered = True
+                except:
+                    print("Error: Registration failed. Please connect to the server first.")
+            else:
+                print("Error: Registration failed due to invalid syntax")
+        else:
+            print("Error: Registration failed due to invalid syntax")
 
     elif words[0] == "/all":
         # The user is trying to send a message to all clients
         # Join the words of the input into a single string
-        message = " ".join(words[1:])
-
-        # Create the message to be sent to the server
-        message_to_send = {
-            "command": "all",
-            "handle": handle,
-            "message": message,
-        }
-
-        # Encode the message as a JSON formatted
-
-        message_to_send_str = json.dumps(message_to_send)
-
-        # Send the message to the server
         try:
-            sock.sendto(message_to_send_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+            if registered:
+                message = " ".join(words[1:])
+
+                # Create the message to be sent to the server
+                message_to_send = {
+                    "command": "all",
+                    "handle": handle,
+                    "message": message,
+                }
+                message_to_send_str = json.dumps(message_to_send)
+                sock.sendto(message_to_send_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+            else:
+                print('Error: Please register before using "/all"')
         except:
             print("Error: You are not connected to a server.")
 
     elif words[0] == "/msg":
-        message = " ".join(words[2:])
-
         try:
-            message_to_send = {
-                "command": "msg",
-                "from": handle,
-                "handle": words[1],
-                "message": message,
-                
-            }
-
-        # Encode the message as a JSON formatted string
-            message_to_send_str = json.dumps(message_to_send)
-        except:
-            print("Error: Missing argument(s)")
-
-        # Send the message to the server
-        try:
-            sock.sendto(message_to_send_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+            if registered:
+                message = " ".join(words[2:])
+                try:
+                    message_to_send = {
+                        "command": "msg",
+                        "from": handle,
+                        "handle": words[1],
+                        "message": message,
+                        
+                    }
+                    
+                    message_to_send_str = json.dumps(message_to_send)
+                    sock.sendto(message_to_send_str.encode(), (SERVER_IP, int(SERVER_PORT)))
+                except:
+                    print("Error: Missing argument(s)")
+            else:
+                print('Error: Please register before using "/msg"')
         except:
             print("Error: You are not connected to a server.")
     
