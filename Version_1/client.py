@@ -143,8 +143,19 @@ while True:
         message_to_send_str = json.dumps(message_to_send)
 
         # Send the message to the server
-        sock.sendto(message_to_send_str.encode(), (SERVER_IP, 9999))
+        try:
+            sock.sendto(message_to_send_str.encode(), (SERVER_IP, 9999))
+        except:
+            print("Error: You are not connected to a server.")
     
+    elif words[0] == "/?":
+        print("/join <server_ip_add> <port> : Connect to the server application\n")
+        print("/leave : Disconnect to the server application\n")
+        print("/register <handle> : Register a unique handle or alias \n")    
+        print("/all <message> : Send message to all\n")    
+        print("/msg <handle> <message> : Send direct message to a single handle\n")    
+        
+
     else:
         message_to_send = {
               "command": "not_found",
